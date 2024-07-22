@@ -2,14 +2,20 @@
 
 set -euo pipefail
 
-GH_REPO="https://github.com/kcl-lang/kcl"
+GH_REPO="https://github.com/kcl-lang/cli"
+RELEASE_TOOL_NAME="kclvm_cli"
 TOOL_NAME="kcl"
-TOOL_TEST="kcl --version"
+LANGUAGE_SERVER_TOOL_NAME="kcl-language-server"
+
+log() {
+	printf "%s\n" "${1}" >&2
+}
 
 fail() {
-	echo -e "asdf-$TOOL_NAME: $*"
+	log "asdf-$TOOL_NAME: $*"
 	exit 1
 }
+
 
 curl_opts=(-fsSL)
 
@@ -43,10 +49,10 @@ download_release() {
 	"Darwin")
 		case "$(uname -m)" in
 		"arm64")
-			url="$GH_REPO/releases/download/v${version}/kclvm-v${version}-darwin-arm64.tar.gz"
+			url="$GH_REPO/releases/download/v${version}/kcl-v${version}-darwin-arm64.tar.gz"
 			;;
 		"x86_64")
-			url="$GH_REPO/releases/download/v${version}/kclvm-v${version}-darwin-amd64.tar.gz"
+			url="$GH_REPO/releases/download/v${version}/kcl-v${version}-darwin-amd64.tar.gz"
 			;;
 		esac
 		;;
@@ -56,7 +62,7 @@ download_release() {
 			fail "armv7l not supported"
 			;;
 		"x86_64")
-			url="$GH_REPO/releases/download/v${version}/kclvm-v${version}-linux-amd64.tar.gz"
+			url="$GH_REPO/releases/download/v${version}/kcl-v${version}-linux-amd64.tar.gz"
 			;;
 		"aarch64")
 			fail "aarch64 not supported"
@@ -65,28 +71,36 @@ download_release() {
 		;;
 	esac
 
-	echo "* Downloading $TOOL_NAME release $version..."
+	log "* Downloading $TOOL_NAME release $version..."
 	curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
 }
 
 install_version() {
 	local install_type="$1"
 	local version="$2"
-	local install_path="$3/bin"
+	local install_path="$3"
 
-	if [ "$install_type" != "version" ]; then
-		fail "asdf-$TOOL_NAME supports release installs only"
+	if [ "${install_type}" != "version" ]; then
+		fail "asdf-${TOOL_NAME} supports release installs only"
 	fi
 
 	(
-		mkdir -p "$install_path"
+		mkdir -p "${install_path}"
 		cp -r "${ASDF_DOWNLOAD_PATH}"/bin/* "${install_path}"
 
-		local tool_cmd
-		tool_cmd="$(echo "$TOOL_TEST" | cut -d' ' -f1)"
-		test -x "$install_path/$tool_cmd" || fail "Expected $install_path/$tool_cmd to be executable."
+		# ls -la "${install_path}" >&2
+		chmod +x "${install_path}/${RELEASE_TOOL_NAME}"
+		chmod +x "${install_path}/${LANGUAGE_SERVER_TOOL_NAME}"
 
-		echo "$TOOL_NAME $version installation was successful!"
+		tool_path="${install_path}/${TOOL_NAME}"
+		# symlink `kclvm_cli` to `kcl` incase something relies on the original filename
+		ln -s "${install_path}/${RELEASE_TOOL_NAME}" "${tool_path}"
+
+		# ls -la "${install_path}" >&2
+
+		"${tool_path}" --version || fail "tool test failed!"
+
+		log "$TOOL_NAME $version installation was successful!"
 	) || (
 		rm -rf "$install_path"
 		fail "An error occurred while installing $TOOL_NAME $version."
