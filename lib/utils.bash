@@ -3,7 +3,7 @@
 set -euo pipefail
 
 GH_REPO="https://github.com/kcl-lang/cli"
-RELEASE_TOOL_NAME="kclvm_cli"
+RELEASE_TOOL_NAME="kcl"
 TOOL_NAME="kcl"
 LANGUAGE_SERVER_TOOL_NAME="kcl-language-server"
 
